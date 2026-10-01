@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacts</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container">
+        <h1>Contacts</h1>
+
+        <div class="actions">
+            <a class="button" href="add-contact.html">Add contact</a>
+            <button class="button" id="load-contacts" type="button">Load contacts</button>
+        </div>
+
+        <h2>All contacts (<span id="contact-count">0</span>)</h2>
+        <p id="message"></p>
+
+        <div class="filters">
+            <form class="filter" id="search-id-form">
+                <label for="search-id">Find by ID</label>
+                <input id="search-id" name="id" type="text" inputmode="numeric" placeholder="Contact ID">
+                <button class="button" type="submit">Search</button>
+            </form>
+            <form class="filter" id="search-category-form">
+                <label for="search-category">Find by category</label>
+                <select id="search-category" name="category">
+                    <option value="">Choose a category</option>
+                    <option value="friend">Friend</option>
+                    <option value="family">Family</option>
+                    <option value="school">School</option>
+                </select>
+                <button class="button" type="submit">Filter</button>
+            </form>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="contact-list"></tbody>
+            </table>
+        </div>
+    </main>
+    <script>
+        const contactList = document.getElementById("contact-list");
+        const contactCount = document.getElementById("contact-count");
+        const message = document.getElementById("message");
+        let currentQuery = "";
+
+        function addCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value || "";
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function showContacts(contacts) {
+            contactList.innerHTML = "";
+            contactCount.textContent = contacts.length;
+
+            if (contacts.length === 0) {
+                const row = document.createElement("tr");
+                addCell(row, "No contacts found.").colSpan = 6;
+                contactList.appendChild(row);
+                return;
+            }
+
+            contacts.forEach((contact) => {
+                const row = document.createElement("tr");
+                [contact.id, contact.name, contact.phone_number, contact.email_address, contact.category].forEach((value) => addCell(row, value));
+
+                const actions = addCell(row, "");
+                const edit = document.createElement("a");
+                edit.href = `modify-contact.html?id=${contact.id}`;
+                edit.textContent = "Edit";
+
+                const remove = document.createElement("button");
+                remove.className = "delete-button";
+                remove.type = "button";
+                remove.dataset.id = contact.id;
+                remove.textContent = "Delete";
+
+                actions.append(edit, document.createTextNode(" "), remove);
+                contactList.appendChild(row);
+            });
+        }
+
+        async function loadContacts(query = "") {
+            currentQuery = query;
+            message.textContent = "";
+
+            try {
+                const response = await fetch(`/api/contacts${query}`);
+                const contacts = await response.json();
+                if (!response.ok) throw new Error(contacts.message);
+                showContacts(contacts);
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        }
+
+        document.getElementById("load-contacts").addEventListener("click", () => loadContacts());
+
+        document.getElementById("search-id-form").addEventListener("submit", (event) => {
+            event.preventDefault();
+            const id = event.target.elements.id.value.trim();
+            loadContacts(id ? `?id=${encodeURIComponent(id)}` : "");
+        });
+
+        document.getElementById("search-category-form").addEventListener("submit", (event) => {
+            event.preventDefault();
+            const category = event.target.elements.category.value;
+            loadContacts(category ? `?category=${encodeURIComponent(category)}` : "");
+        });
+
+        contactList.addEventListener("click", async (event) => {
+            if (!event.target.matches(".delete-button")) return;
+            if (!confirm("Delete this contact?")) return;
+
+            const response = await fetch(`/api/contacts/${event.target.dataset.id}`, { method: "DELETE" });
+            const result = await response.json();
+            message.textContent = result.message;
+            if (response.ok) loadContacts(currentQuery);
+        });
+
+        loadContacts();
+    </script>
+</body>
+</html>

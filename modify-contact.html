@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modify contact | Personal Contacts</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container form-page">
+        <a href="index.html">Back to contacts</a>
+        <h1>Modify contact</h1>
+        <p id="message"></p>
+        <form class="contact-form" id="contact-form" data-mode="edit">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" maxlength="50" required>
+
+            <label for="phone">Phone number</label>
+            <input id="phone" name="phone_number" type="tel" required>
+
+            <label for="email">Email address (optional)</label>
+            <input id="email" name="email_address" type="email">
+
+            <label for="category">Category</label>
+            <select id="category" name="category" required>
+                <option value="friend">Friend</option>
+                <option value="family">Family</option>
+                <option value="school">School</option>
+            </select>
+
+            <button class="button" type="submit">Save changes</button>
+        </form>
+    </main>
+    <script>
+        const form = document.getElementById("contact-form");
+        const message = document.getElementById("message");
+        const id = new URLSearchParams(window.location.search).get("id");
+
+        async function loadContact() {
+            try {
+                const response = await fetch(`/api/contacts/${id}`);
+                const contact = await response.json();
+                if (!response.ok) throw new Error(contact.message);
+
+                form.elements.name.value = contact.name;
+                form.elements.phone_number.value = contact.phone_number;
+                form.elements.email_address.value = contact.email_address || "";
+                form.elements.category.value = contact.category;
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(`/api/contacts/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(Object.fromEntries(new FormData(form)))
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message);
+                window.location.href = "index.html";
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        });
+
+        loadContact();
+    </script>
+</body>
+</html>
